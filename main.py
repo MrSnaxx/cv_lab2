@@ -2,6 +2,8 @@ import copy
 import math
 import warnings
 
+from scipy.signal import convolve2d
+
 # suppress warnings
 warnings.filterwarnings('ignore')
 from sys import argv
@@ -242,6 +244,95 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
     def set_image(self):
         self.image_view.clear()
         self.image_view.setImage(self.img)
+
+    def log_transform(self):
+        c_r = 255 / np.log(1 + np.max(self.img[:, :, 0]))
+        c_g = 255 / np.log(1 + np.max(self.img[:, :, 1]))
+        c_b = 255 / np.log(1 + np.max(self.img[:, :, 2]))
+        transformed_r = c_r * np.log(1 + np.where(self.img[:, :, 0] == 255, 254, self.img[:, :, 0]))
+        transformed_g = c_g * np.log(1 + np.where(self.img[:, :, 1] == 255, 254, self.img[:, :, 1]))
+        transformed_b = c_b * np.log(1 + np.where(self.img[:, :, 2] == 255, 254, self.img[:, :, 2]))
+        transformed_img = np.stack((transformed_r, transformed_g, transformed_b), axis=-1)
+        transformed_img = np.clip(transformed_img, 0, 255).astype(np.uint8)
+        alpha = self.img[:, :, 3]
+        transformed_image_rgba = np.dstack((transformed_img, alpha))
+        self.img = transformed_image_rgba
+        self.set_image()
+
+    def power_transform(self):
+        gamma = 0.5
+        r_max = np.max(self.img[:, :, 0])
+        g_max = np.max(self.img[:, :, 1])
+        b_max = np.max(self.img[:, :, 2])
+        desired_max = 100
+        c_r = desired_max / (r_max ** gamma)
+        c_g = desired_max / (g_max ** gamma)
+        c_b = desired_max / (b_max ** gamma)
+        transformed_r = c_r * (self.img[:, :, 0] ** gamma)
+        transformed_g = c_g * (self.img[:, :, 1] ** gamma)
+        transformed_b = c_b * (self.img[:, :, 2] ** gamma)
+        transformed_r = np.clip(transformed_r, 0, 255).astype(np.uint8)
+        transformed_g = np.clip(transformed_g, 0, 255).astype(np.uint8)
+        transformed_b = np.clip(transformed_b, 0, 255).astype(np.uint8)
+        transformed_img = np.stack((transformed_r, transformed_g, transformed_b, self.img[:, :, 3]), axis=-1)
+        self.img = transformed_img
+        self.set_image()
+
+    def binarization(self):
+        threshold = 65
+        brightness = (self.img[:, :, 0] + self.img[:, :, 1] + self.img[:, :, 2]) / 3
+        binary_img = np.where(brightness > threshold, 255, 0)
+        binary_img_rgba = np.stack((binary_img, binary_img, binary_img, self.img[:, :, 3]), axis=-1)
+        self.img = binary_img_rgba
+        self.set_image()
+
+    def goofy_ahh_pixel_cutting(self):
+        img_array = self.img
+        # Разделяем RGB и альфа-каналы
+        rgb = img_array[:, :, :3]
+        alpha = img_array[:, :, 3]
+        min_brightness = 10
+        max_brightness = 100
+        constant_value = 0
+        mask = (rgb >= min_brightness) & (rgb <= max_brightness)
+
+        if constant_value is not None:
+            rgb[~mask] = constant_value
+            processed_image_array = np.concatenate((rgb, alpha[:, :, np.newaxis]), axis=2)
+        else:
+            processed_image_array = img_array
+        self.img = processed_image_array
+        self.set_image()
+
+    def sobel_operator(self):
+        sobel_x = np.array([[-1, 0, 1],
+                            [-2, 0, 2],
+                            [-1, 0, 1]])
+        sobel_y = np.array([[-1, -2, -1],
+                            [0, 0, 0],
+                            [1, 2, 1]])
+        gray = np.dot(self.img[:, :, :3], [0.299, 0.587, 0.114])
+
+        grad_x = convolve2d(gray, sobel_x, mode="same")
+        grad_y = convolve2d(gray, sobel_y, mode="same")
+        abs_grad_sum = np.abs(grad_x) + np.abs(grad_y)
+        sharpness_score = np.mean(abs_grad_sum)
+        print(sharpness_score)
+
+    def sharpness_score(self):
+        differences = []
+        for r in range(1, self.img_width - 1):
+            for c in range(1, self.img_height - 1):
+                pixel_brightness = self.img[r][c][0:3].mean()
+                neighbour1 = self.img[r - 1][c][0:3].mean()
+                neighbour2 = self.img[r][c + 1][0:3].mean()
+                neighbour3 = self.img[r][c - 1][0:3].mean()
+                neighbour4 = self.img[r + 1][c][0:3].mean()
+                differences.append(abs(neighbour1 - pixel_brightness))
+                differences.append(abs(neighbour2 - pixel_brightness))
+                differences.append(abs(neighbour3 - pixel_brightness))
+                differences.append(abs(neighbour4 - pixel_brightness))
+        print(sum(differences) / len(differences))
 
 
 if __name__ == "__main__":
