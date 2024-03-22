@@ -18,11 +18,39 @@ import pyqtgraph as pg
 
 Ui_MainWindow, _ = uic.loadUiType("interface_lab_2.ui")
 
-def mean_filter(img,n):
+
+def mean_filter(img, kernel_size):
+    new_img = copy.deepcopy(img)
+    img_height, img_width, channels = img.shape
+    # Применение прямоугольного фильтра к изображению.
+
+    # Определяем ядро прямоугольного фильтра и его нормировку
+    kernel = np.ones((kernel_size, kernel_size), dtype=np.float32) / (kernel_size ** 2)
+
+    # Создаем массив для результата, который будет иметь тот же размер, что и исходное изображение
+
+    # Паддинг изображения, чтобы гарантировать, что мы можем применить фильтр ко всем пикселям
+    padded_image = np.pad(img,
+                          ((kernel_size // 2, kernel_size // 2), (kernel_size // 2, kernel_size // 2), (0, 0)),
+                          mode='constant')
+
+    # Применяем свертку к каждому каналу RGB
+    for c in range(3):  # 3 канала для RGB
+        # Применяем фильтр
+        for i in range(img_width):
+            for j in range(img_height):
+                # Определяем область изображения для применения фильтра
+                region = padded_image[i:i + kernel_size, j:j + kernel_size, c]
+                # Применяем ядро к области и записываем результат
+                filtered_pixel = np.sum(region * kernel)
+                new_img[i, j, 2 - c] = filtered_pixel
+
+    return filtered_image
+
+
+def median_filter(img, n):
     pass
 
-def median_filter(img,n):
-    pass
 
 class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -34,7 +62,7 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         self.image_view.ui.menuBtn.hide()
         self.load_image_action.triggered.connect(self.load_image)
         self.save_image_action.triggered.connect(self.save_image)
-        self.smoothing.clicked.connect(self.zalupa)
+        self.smoothing.clicked.connect(self.set_changes)
 
     def load_image(self):
         filename = QFileDialog.getOpenFileName(self, "Загрузка изображения", "", "Image (*.png *.tiff *.bmp)")
@@ -61,8 +89,8 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
             return
         self.image_view.getImageItem().save(filename[0])
 
-    def zalupa(self):
-        self.img=self.img_original
+    def set_changes(self):
+        self.img = self.img_original
         if self.smoothing.isChecked():
             if self.nxn.currentText() == "3x3":
                 n = 3
