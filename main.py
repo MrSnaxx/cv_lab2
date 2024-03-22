@@ -24,40 +24,29 @@ Ui_MainWindow, _ = uic.loadUiType("interface_lab_2.ui")
 
 def sigma_filter(image, sigma):
     """
-    Applies a sigma filter to an image.
+    Applies Gaussian smoothing to an image.
 
     Args:
         image: np.array representing the image.
-        sigma: The sigma value for the filter.
+        sigma: The sigma value for the Gaussian kernel.
 
     Returns:
-        np.array, the filtered image.
+        np.array, the smoothed image.
     """
 
-    kernel_size = int(2 * sigma + 1)  # Ensure odd kernel size
+    # Create Gaussian kernel
+    kernel_size = int(6 * sigma + 1)  # Ensure odd size
     x, y = np.mgrid[-kernel_size // 2 + 1: kernel_size // 2 + 1, -kernel_size // 2 + 1: kernel_size // 2 + 1]
-
-    # Sigma filter kernel (unnormalized)
     kernel = np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
-    # Вычисление размеров изображения
-    height, width, channels = image.shape
-    # Calculate padding
-    padding = kernel_size // 2
+    kernel /= np.sum(kernel)  # Normalize
 
-    # Pad the image
-    padded_image = np.pad(image, ((padding, padding), (padding, padding), (0, 0)), mode='constant')
+    # Convolve image with kernel
+    smoothed_image = convolve2d(image, kernel, mode='same')
 
-    # Create output image
-    filtered_image = np.zeros_like(image)
+    # Optional normalization (adjust as needed)
+    smoothed_image = np.clip(smoothed_image, 0, 255).astype(np.uint8)
 
-    # Свертка изображения с фильтром для каждого канала
-    for channel in range(channels):
-        for i in range(height):
-            for j in range(width):
-                filtered_image[i, j, channel] = np.sum(
-                    padded_image[i:i + kernel_size, j:j + kernel_size, channel] * kernel)
-
-    return filtered_image
+    return smoothed_image
 
 def gaussian_filter(image, sigma):
     """
