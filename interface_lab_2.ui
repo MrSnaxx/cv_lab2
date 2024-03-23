@@ -78,9 +78,58 @@
           </sizepolicy>
          </property>
          <property name="title">
-          <string>Карта контрастности</string>
+          <string>Цветность</string>
          </property>
-         <layout class="QGridLayout" name="gridLayout_2"/>
+         <layout class="QGridLayout" name="gridLayout">
+          <item row="3" column="0">
+           <widget class="QPushButton" name="cut_diap_const">
+            <property name="text">
+             <string>Вырезать произвольный диапазон яркостей (константа)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QPushButton" name="log_trans">
+            <property name="text">
+             <string>Выполнить логарифмическое преобразование</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QPushButton" name="power_trans">
+            <property name="text">
+             <string>Выполнить степенное преобразование</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QPushButton" name="binary_trans">
+            <property name="text">
+             <string>Выполнить бинарное преобразование</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QPushButton" name="cut_diap_nothing">
+            <property name="text">
+             <string>Вырезать произвольный диапазон яркостей (исходный вид)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
         </widget>
        </item>
        <item row="1" column="0">
@@ -227,17 +276,84 @@
            </widget>
           </item>
           <item>
-           <spacer name="verticalSpacer">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
+           <widget class="QFrame" name="frame_7">
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
             </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>40</height>
-             </size>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
             </property>
-           </spacer>
+            <layout class="QGridLayout" name="gridLayout_4">
+             <item row="1" column="2">
+              <widget class="QDoubleSpinBox" name="sharpness_lambda">
+               <property name="enabled">
+                <bool>true</bool>
+               </property>
+               <property name="minimum">
+                <double>0.010000000000000</double>
+               </property>
+               <property name="value">
+                <double>1.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>Лямбда:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QComboBox" name="sharpness_filters">
+               <item>
+                <property name="text">
+                 <string>Медианный (3x3)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Прямоугольный (3x3)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Гаусс (сигма = 3)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Гаусс (сигма = 1.5)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Сигма (сигма = 3)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Сигма (сигма = 1.5)</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>Выбор фильтра</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QPushButton" name="use_sharpness">
+               <property name="text">
+                <string>Применить резкость</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
           </item>
           <item>
            <widget class="QCheckBox" name="diff">
