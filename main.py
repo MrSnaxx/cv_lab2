@@ -23,30 +23,21 @@ Ui_MainWindow, _ = uic.loadUiType("interface_lab_2.ui")
 
 
 def sigma_filter(image, sigma):
-    """
-    Applies Gaussian smoothing to an image.
-
-    Args:
-        image: np.array representing the image.
-        sigma: The sigma value for the Gaussian kernel.
-
-    Returns:
-        np.array, the smoothed image.
-    """
-
-    # Create Gaussian kernel
-    kernel_size = int(6 * sigma + 1)  # Ensure odd size
-    x, y = np.mgrid[-kernel_size // 2 + 1: kernel_size // 2 + 1, -kernel_size // 2 + 1: kernel_size // 2 + 1]
-    kernel = np.exp(-(x ** 2 + y ** 2) / (2 * sigma ** 2))
-    kernel /= np.sum(kernel)  # Normalize
-
-    # Convolve image with kernel
-    smoothed_image = convolve2d(image, kernel, mode='same')
-
-    # Optional normalization (adjust as needed)
-    smoothed_image = np.clip(smoothed_image, 0, 255).astype(np.uint8)
-
-    return smoothed_image
+    filtered_image = np.zeros_like(image)
+    kernel_size = int(sigma * 6 + 1)
+    width_image = image.shape[0]
+    height_image = image.shape[1]
+    if kernel_size % 2 == 0:
+        kernel_size += 1
+    for x in range(width_image):
+        for y in range(height_image):
+            y_min = max(0, y - kernel_size // 2)
+            y_max = min(height_image, y + kernel_size // 2 + 1)
+            x_min = max(0, x - kernel_size // 2)
+            x_max = min(width_image, x + kernel_size // 2 + 1)
+            neighborhood = image[x_min:x_max, y_min:y_max]
+            filtered_image[x, y] = np.mean(neighborhood)
+    return filtered_image
 
 def gaussian_filter(image, sigma):
     """
@@ -182,8 +173,15 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         self.save_image_action.triggered.connect(self.save_image)
         self.smoothing.clicked.connect(self.set_changes)
         self.gaussian.clicked.connect(self.set_changes)
-        self.sigma_filter.clicked.connect(self.set_changes)
+        #self.sigma_filter.clicked.connect(self.set_changes)
         self.diff.clicked.connect(self.set_changes)
+        self.log_trans.clicked.connect(self.log_transform)
+        self.power_trans.clicked.connect(self.power_transform)
+        self.binary_trans.clicked.connect(self.binarization)
+        self.cut_diap_const.clicked.connect(lambda: self.goofy_ahh_pixel_cutting(50))
+        self.cut_diap_nothing.clicked.connect(lambda: self.goofy_ahh_pixel_cutting(None))
+        self.sigma_filter.clicked.connect(self.use_sigma_filter)
+        self.use_sharpness.clicked.connect(self.unsharp_masking)
 
     def load_image(self):
         filename = QFileDialog.getOpenFileName(self, "Загрузка изображения", "", "Image (*.png *.tiff *.bmp)")
@@ -199,7 +197,6 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         self.img_height = img_array.shape[1]
         self.img_width = img_array.shape[0]
         self.set_image()
-        print(self.img.dtype)
 
     def save_image(self):
         if self.img is None:
@@ -275,21 +272,18 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         self.img = binary_img_rgba
         self.set_image()
 
-    def goofy_ahh_pixel_cutting(self):
+    def goofy_ahh_pixel_cutting(self, constant_value=None):
         img_array = self.img
-        # Разделяем RGB и альфа-каналы
+        if constant_value is None:
+            self.image_view.setImage(self.img_original.copy())
+            return
         rgb = img_array[:, :, :3]
         alpha = img_array[:, :, 3]
         min_brightness = 10
         max_brightness = 100
-        constant_value = 0
         mask = (rgb >= min_brightness) & (rgb <= max_brightness)
-
-        if constant_value is not None:
-            rgb[~mask] = constant_value
-            processed_image_array = np.concatenate((rgb, alpha[:, :, np.newaxis]), axis=2)
-        else:
-            processed_image_array = img_array
+        rgb[~mask] = constant_value
+        processed_image_array = np.concatenate((rgb, alpha[:, :, np.newaxis]), axis=2)
         self.img = processed_image_array
         self.set_image()
 
@@ -322,6 +316,32 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
                 differences.append(abs(neighbour3 - pixel_brightness))
                 differences.append(abs(neighbour4 - pixel_brightness))
         print(sum(differences) / len(differences))
+
+    def unsharp_masking(self):
+        lamb = self.sharpness_lambda.value()
+        sh_filter = self.sharpness_filters.currentIndex()
+        if sh_filter == 0:
+            smoothed_img = mean_filter(self.img_original, 3)
+        elif sh_filter == 1:
+            smoothed_img = mean_filter(self.img_original, 5)
+        elif sh_filter == 2:
+            smoothed_img = gaussian_filter(self.img_original, 3)
+        elif sh_filter == 3:
+            smoothed_img = gaussian_filter(self.img_original, 1.5)
+        elif sh_filter == 4:
+            smoothed_img = sigma_filter(self.img_original, 3)
+        elif sh_filter == 5:
+            smoothed_img = sigma_filter(self.img_original, 1.5)
+        else:
+            return
+        changed_image = self.img_original + lamb * (self.img_original - smoothed_img)
+        changed_image = np.clip(changed_image, 0, 255)
+        self.image_view.setImage(changed_image)
+
+    def use_sigma_filter(self):
+        sigma = self.sigma_2.value()
+        image = sigma_filter(self.img, sigma)
+        self.image_view.setImage(image)
 
 
 if __name__ == "__main__":
