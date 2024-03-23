@@ -21,6 +21,7 @@ from scipy.ndimage import median_filter
 
 Ui_MainWindow, _ = uic.loadUiType("interface_lab_2.ui")
 
+
 def sigma_filter(image, sigma):
     filtered_image = np.zeros_like(image)
     kernel_size = int(sigma * 6 + 1)
