@@ -26,6 +26,8 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         self.save_image_action.triggered.connect(self.save_image)
         self.segment_rgb_action.clicked.connect(self.segment_rgb)
         self.segment_lab_action.clicked.connect(self.segment_lab)
+        self.dbrgb.clicked.connect(self.db_rgb)
+        self.dblab.clicked.connect(self.db_lab)
 
     def segment_rgb(self):
         self.img = self.img_original.copy()
@@ -35,6 +37,16 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
     def segment_lab(self):
         self.img = self.img_original.copy()
         self.img = self.apply_clustering_lab()
+        self.set_image()
+
+    def db_lab(self):
+        self.img = self.img_original.copy()
+        self.img = self.dbscan(True)
+        self.set_image()
+
+    def db_rgb(self):
+        self.img = self.img_original.copy()
+        self.img = self.dbscan()
         self.set_image()
 
     def load_image(self):
@@ -67,7 +79,7 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         reshaped_lab_img = lab_img.reshape(-1, 3)
 
         # Apply k-means clustering in Lab space
-        kmeans_lab = KMeans(n_clusters=3, random_state=42)
+        kmeans_lab = KMeans(n_clusters=self.kVal.value(), random_state=42)
         lab_labels = kmeans_lab.fit_predict(reshaped_lab_img)
         segmented_img_lab = kmeans_lab.cluster_centers_[lab_labels].reshape(self.img.shape)
 
@@ -82,12 +94,41 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         standardized_img = scaler.fit_transform(reshaped_img)
 
         # Apply k-means clustering in RGB space
-        kmeans_rgb = KMeans(n_clusters=3, random_state=42)
+        kmeans_rgb = KMeans(n_clusters=self.kVal.value(), random_state=42)
         rgb_labels = kmeans_rgb.fit_predict(standardized_img)
-        segmented_img_rgb = kmeans_rgb.cluster_centers_[rgb_labels].reshape(self.img.shape)
 
-        # Convert image to Lab color space
+        # Generate random colors for each cluster
+        cluster_colors = [tuple(np.random.randint(0, 256, size=3)) for _ in range(self.kVal.value())]
+
+        # Assign random colors to each pixel based on cluster labels
+        segmented_img_rgb = np.array([cluster_colors[label] for label in rgb_labels])
+        segmented_img_rgb = segmented_img_rgb.reshape(self.img.shape)
+
         return segmented_img_rgb.astype(np.uint8)
+
+    def dbscan(self, lab=False):
+        if lab:
+            self.img = self.rgb_to_lab(self.img)
+        # Reshape image array for clustering
+        reshaped_img = self.img.reshape(-1, 3)
+
+        # Standardize features
+        scaler = StandardScaler()
+        standardized_img = scaler.fit_transform(reshaped_img)
+
+        # Apply DBSCAN clustering
+        dbscan = DBSCAN(eps=self.eps.value(), min_samples=self.samples.value())
+        dbscan_labels = dbscan.fit_predict(standardized_img)
+
+        # Generate random colors for each cluster
+        unique_labels = np.unique(dbscan_labels)
+        cluster_colors = [tuple(np.random.randint(0, 256, size=3)) for _ in range(len(unique_labels))]
+        # Assign random colors to each pixel based on cluster labels
+        segmented_img_dbscan = np.array([cluster_colors[label] for label in dbscan_labels])
+        segmented_img_dbscan = segmented_img_dbscan.reshape(self.img.shape)
+
+        return segmented_img_dbscan.astype(np.uint8)
+
     def rgb_to_lab(self, rgb_img):
         rgb_img = rgb_img.astype(np.uint8)
         pil_img = Image.fromarray(rgb_img)
