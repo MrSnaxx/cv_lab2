@@ -10,9 +10,53 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from PyQt5 import uic
 from sklearn.cluster import KMeans, DBSCAN
+import numpy as np
 from sklearn.preprocessing import StandardScaler
 
 Ui_MainWindow, _ = uic.loadUiType("interface_lab_2.ui")
+
+
+def find_seeds(img, threshold=150):
+    seeds = []
+    # Находим пиксели, которые превышают порог
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            if np.mean(img[i, j]) > threshold:
+                seeds.append((i, j))
+    return seeds
+
+
+def grow_from_seed(img, seed, visited):
+    # Определение соседних пикселей и их добавление в список растущей области
+    queue = [seed]
+    while queue:
+        x, y = queue.pop(0)
+        if not visited[x, y]:
+            visited[x, y] = True
+            # Добавляем пиксель в область, если он подходит
+            img[x, y] = 255  # Пример: обозначение пикселя белым цветом
+            # Добавляем соседние пиксели к очереди для проверки
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    if (0 <= x + dx < img.shape[0]) and (0 <= y + dy < img.shape[1]):
+                        queue.append((x + dx, y + dy))
+
+
+def grow_region(img, seed, visited, target_color):
+    # Определение соседних пикселей и их добавление в список растущей области
+    queue = [seed]
+    while queue:
+        x, y = queue.pop(0)
+        if not visited[x, y]:
+            visited[x, y] = True
+            # Добавляем пиксель в область, если он схож с целевым цветом
+            if np.allclose(img[x, y], target_color, atol=10):  # Пример: сравнение цветов с допуском
+                img[x, y] = 255  # Пример: обозначение пикселя белым цветом
+                # Добавляем соседние пиксели к очереди для проверки
+                for dx in [-1, 0, 1]:
+                    for dy in [-1, 0, 1]:
+                        if (0 <= x + dx < img.shape[0]) and (0 <= y + dy < img.shape[1]):
+                            queue.append((x + dx, y + dy))
 
 
 def watershed(img):
@@ -61,6 +105,8 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         self.dbrgb.clicked.connect(self.db_rgb)
         self.dblab.clicked.connect(self.db_lab)
         self.watershed_method.clicked.connect(self.use_watershed)
+        self.aboba.clicked.connect(self.penis)
+        self.habibi.clicked.connect(self.hui)
 
     def segment_rgb(self):
         self.img = self.img_original.copy()
@@ -150,7 +196,7 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         standardized_img = scaler.fit_transform(reshaped_img)
 
         # Apply DBSCAN clustering
-        dbscan = DBSCAN(eps=self.eps.value(), min_samples=self.samples.value())
+        dbscan = DBSCAN(eps=self.eps.value(), min_samples=self.samples.value(), n_jobs=5)
         dbscan_labels = dbscan.fit_predict(standardized_img)
 
         # Generate random colors for each cluster
@@ -177,6 +223,40 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         img = copy.deepcopy(self.img_original).astype(np.uint8)
         self.img = watershed(img)
         self.set_image()
+    def penis(self):
+        self.img=self.img_original
+        self.img=Redactor.seed_grow(self.img)
+        print(self.img)
+        self.set_image()
+
+    def hui(self):
+        self.img=self.img_original
+        self.img=Redactor.region_growing(self.img)
+        print(self.img)
+        self.set_image()
+    @staticmethod
+    def seed_grow(img):
+        # Начальные семена могут быть определены, например, путем поиска пикселей, которые превышают некоторый порог
+        seeds = find_seeds(img)
+        # Создание маски для отслеживания пикселей, которые уже были обработаны
+        visited = np.zeros(img.shape[:2], dtype=bool)
+        for seed in seeds:
+            # Выполнение выращивания семян из каждой точки-семени
+            grow_from_seed(img, seed, visited)
+        return img
+
+    @staticmethod
+    def region_growing(img):
+        # Начальная область может быть, например, центральным пикселем
+        seed = (img.shape[0] // 2, img.shape[1] // 2)
+        # Создание маски для отслеживания пикселей, которые уже были обработаны
+        visited = np.zeros(img.shape[:2], dtype=bool)
+        # Определение начального цвета
+        target_color = img[seed]
+        # Выполнение разрастания области
+        grow_region(img, seed, visited, target_color)
+        return img
+
 
 if __name__ == "__main__":
     application = QtWidgets.QApplication(argv)

@@ -161,7 +161,14 @@
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QSpinBox" name="samples"/>
+              <widget class="QSpinBox" name="samples">
+               <property name="minimum">
+                <number>5</number>
+               </property>
+               <property name="maximum">
+                <number>99999999</number>
+               </property>
+              </widget>
              </item>
              <item row="0" column="2">
               <spacer name="horizontalSpacer_2">
@@ -216,14 +223,28 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QPushButton" name="watershed_method">
-            <property name="text">
-             <string>Водораздел</string>
-            </property>
-           </widget>
-          </item>
          </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="watershed_method">
+         <property name="text">
+          <string>Водораздел</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="aboba">
+         <property name="text">
+          <string>Сперма</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="habibi">
+         <property name="text">
+          <string>Пизда</string>
+         </property>
         </widget>
        </item>
        <item>
