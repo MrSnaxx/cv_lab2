@@ -216,6 +216,13 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QPushButton" name="watershed_method">
+            <property name="text">
+             <string>Водораздел</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
