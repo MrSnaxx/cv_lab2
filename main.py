@@ -1,5 +1,11 @@
 import copy
+import itertools
+import random
 import warnings
+
+from matplotlib import pyplot as plt
+from numba import njit
+from pyqtgraph import SignalProxy
 
 warnings.filterwarnings('ignore')
 from sys import argv
@@ -12,82 +18,10 @@ from PyQt5 import uic
 from sklearn.cluster import KMeans, DBSCAN
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-
+# from numba import njit
 Ui_MainWindow, _ = uic.loadUiType("interface_lab_2.ui")
 
 
-def find_seeds(img, threshold=150):
-    seeds = []
-    # Находим пиксели, которые превышают порог
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            if np.mean(img[i, j]) > threshold:
-                seeds.append((i, j))
-    return seeds
-
-
-def grow_from_seed(img, seed, visited):
-    # Определение соседних пикселей и их добавление в список растущей области
-    queue = [seed]
-    while queue:
-        x, y = queue.pop(0)
-        if not visited[x, y]:
-            visited[x, y] = True
-            # Добавляем пиксель в область, если он подходит
-            img[x, y] = 255  # Пример: обозначение пикселя белым цветом
-            # Добавляем соседние пиксели к очереди для проверки
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
-                    if (0 <= x + dx < img.shape[0]) and (0 <= y + dy < img.shape[1]):
-                        queue.append((x + dx, y + dy))
-
-
-def grow_region(img, seed, visited, target_color):
-    # Определение соседних пикселей и их добавление в список растущей области
-    queue = [seed]
-    while queue:
-        x, y = queue.pop(0)
-        if not visited[x, y]:
-            visited[x, y] = True
-            # Добавляем пиксель в область, если он схож с целевым цветом
-            if np.allclose(img[x, y], target_color, atol=10):  # Пример: сравнение цветов с допуском
-                img[x, y] = 255  # Пример: обозначение пикселя белым цветом
-                # Добавляем соседние пиксели к очереди для проверки
-                for dx in [-1, 0, 1]:
-                    for dy in [-1, 0, 1]:
-                        if (0 <= x + dx < img.shape[0]) and (0 <= y + dy < img.shape[1]):
-                            queue.append((x + dx, y + dy))
-
-
-def watershed(img):
-    hsv = cv.cvtColor(img, cv.COLOR_RGB2HSV)
-    hue = hsv[:, :, 0]
-    ret, thresh = cv.threshold(hue, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
-    kernel = np.ones((3, 3), np.uint8)
-    opening = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=2)
-    sure_bg = cv.dilate(opening, kernel, iterations=3)
-    dist_transform = cv.distanceTransform(opening, cv.DIST_L2, 5)
-    ret, sure_fg = cv.threshold(dist_transform, 0.5 * dist_transform.max(), 255, 0)
-    sure_fg = np.uint8(sure_fg)
-    unknown = cv.subtract(sure_bg, sure_fg)
-    ret, markers = cv.connectedComponents(sure_fg)
-    markers = markers + 1
-    markers[unknown == 255] = 0
-    # Применение алгоритма водораздела
-    markers = cv.watershed(img, markers)
-
-    markers = cv.watershed(img, markers)
-    # Разметка границ
-    img_result = img.copy()
-    img_result[markers == -1] = [255, 0, 0]  # Цвет границы (синий)
-    unique_markers = np.unique(markers)
-    for marker in unique_markers:
-        if marker <= 0:
-            continue
-        color = np.random.randint(0, 255, size=3)
-        img[markers == marker] = color
-
-    return img
 
 
 class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -98,35 +32,84 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         self.image_view.ui.histogram.hide()
         self.image_view.ui.roiBtn.hide()
         self.image_view.ui.menuBtn.hide()
+        sel
         self.load_image_action.triggered.connect(self.load_image)
         self.save_image_action.triggered.connect(self.save_image)
-        self.segment_rgb_action.clicked.connect(self.segment_rgb)
-        self.segment_lab_action.clicked.connect(self.segment_lab)
-        self.dbrgb.clicked.connect(self.db_rgb)
-        self.dblab.clicked.connect(self.db_lab)
-        self.watershed_method.clicked.connect(self.use_watershed)
-        self.aboba.clicked.connect(self.penis)
-        self.habibi.clicked.connect(self.hui)
 
-    def segment_rgb(self):
-        self.img = self.img_original.copy()
-        self.img = self.apply_clustering_rgb()
-        self.set_image()
+    # Функция для обработки видео с использованием алгоритма Хорна-Шанка
+    def horn_schunck(self, video_path):
+        cap = cv.VideoCapture(video_path)
+        # Инициализация параметров алгоритма Хорна-Шанка
+        params = dict(pyr_scale=0.5, levels=3, winsize=15, iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
+        # Инициализация предыдущего кадра
+        ret, prev_frame = cap.read()
+        prev_frame = cv.cvtColor(prev_frame, cv.COLOR_BGR2GRAY)
+        # Чтение видео и применение алгоритма Хорна-Шанка к каждому кадру
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+            # Применение алгоритма Хорна-Шанка к двум последовательным кадрам
+            flow = cv.calcOpticalFlowFarneback(prev_frame, frame_gray, None, **params)
+            # Визуализация потока
+            # здесь можно добавить код для визуализации потока на видео
+            # например, отрисовать векторы потока на кадре
+            # или использовать стрелки для указания направления движения объектов
+            # обновление предыдущего кадра
+            prev_frame = frame_gray
+            # показать текущий кадр с обнаруженным оптическим потоком
+            cv.imshow('Optical Flow - Horn-Schunck', frame)
+            if cv.waitKey(30) & 0xFF == ord('q'):
+                break
+        cap.release()
+        cv.destroyAllWindows()
 
-    def segment_lab(self):
-        self.img = self.img_original.copy()
-        self.img = self.apply_clustering_lab()
-        self.set_image()
-
-    def db_lab(self):
-        self.img = self.img_original.copy()
-        self.img = self.dbscan(True)
-        self.set_image()
-
-    def db_rgb(self):
-        self.img = self.img_original.copy()
-        self.img = self.dbscan()
-        self.set_image()
+    def lucas_kanade(self,video_path):
+        cap = cv.VideoCapture(video_path)
+        # Инициализация параметров алгоритма Лукаса-Канаде
+        lk_params = dict(winSize=(15, 15),
+                         maxLevel=2,
+                         criteria=(cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
+        # Инициализация цвета для отрисовки треков объектов
+        color = (0, 255, 0)
+        # Чтение первого кадра
+        ret, old_frame = cap.read()
+        old_gray = cv.cvtColor(old_frame, cv.COLOR_BGR2GRAY)
+        # Определение начальных точек для отслеживания (можно изменить на ваши нужды)
+        p0 = cv.goodFeaturesToTrack(old_gray, mask=None, **dict(maxCorners=100, qualityLevel=0.3, minDistance=7,
+                                                                blockSize=7))
+        # Создание пустого массива для хранения результатов
+        mask = np.zeros_like(old_frame)
+        # Чтение видео и применение алгоритма Лукаса-Канаде к каждому кадру
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+            # Применение алгоритма Лукаса-Канаде
+            p1, st, err = cv.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
+            # Выбор хороших точек
+            good_new = p1[st == 1]
+            good_old = p0[st == 1]
+            # Отрисовка треков на кадре
+            for i, (new, old) in enumerate(zip(good_new, good_old)):
+                a, b = new.ravel()
+                c, d = old.ravel()
+                mask = cv.line(mask, (a, b), (c, d), color, 2)
+                frame = cv.circle(frame, (a, b), 5, color, -1)
+            # Отображение результатов
+            img = cv.add(frame, mask)
+            cv.imshow('Optical Flow - Lucas-Kanade', img)
+            # Обновление кадра и точек для следующей итерации
+            old_gray = frame_gray.copy()
+            p0 = good_new.reshape(-1, 1, 2)
+            # Выход из цикла по нажатию клавиши 'q'
+            if cv.waitKey(30) & 0xFF == ord('q'):
+                break
+        # Освобождение ресурсов и закрытие окон
+        cap.release()
+        cv.destroyAllWindows()
 
     def load_image(self):
         filename = QFileDialog.getOpenFileName(self, "Загрузка изображения", "", "Image (*.png *.tiff *.bmp)")
@@ -152,110 +135,10 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
             return
         self.image_view.getImageItem().save(filename[0])
 
-    def apply_clustering_lab(self):
-
-        lab_img = self.rgb_to_lab(self.img)
-        reshaped_lab_img = lab_img.reshape(-1, 3)
-
-        # Apply k-means clustering in Lab space
-        kmeans_lab = KMeans(n_clusters=self.kVal.value(), random_state=42)
-        lab_labels = kmeans_lab.fit_predict(reshaped_lab_img)
-        segmented_img_lab = kmeans_lab.cluster_centers_[lab_labels].reshape(self.img.shape)
-
-        return segmented_img_lab.astype(np.uint8)
-
-    def apply_clustering_rgb(self):
-        # Reshape image array for clustering
-        reshaped_img = self.img.reshape(-1, 3)
-
-        # Standardize features
-        scaler = StandardScaler()
-        standardized_img = scaler.fit_transform(reshaped_img)
-
-        # Apply k-means clustering in RGB space
-        kmeans_rgb = KMeans(n_clusters=self.kVal.value(), random_state=42)
-        rgb_labels = kmeans_rgb.fit_predict(standardized_img)
-
-        # Generate random colors for each cluster
-        cluster_colors = [tuple(np.random.randint(0, 256, size=3)) for _ in range(self.kVal.value())]
-
-        # Assign random colors to each pixel based on cluster labels
-        segmented_img_rgb = np.array([cluster_colors[label] for label in rgb_labels])
-        segmented_img_rgb = segmented_img_rgb.reshape(self.img.shape)
-
-        return segmented_img_rgb.astype(np.uint8)
-
-    def dbscan(self, lab=False):
-        if lab:
-            self.img = self.rgb_to_lab(self.img)
-        # Reshape image array for clustering
-        reshaped_img = self.img.reshape(-1, 3)
-
-        # Standardize features
-        scaler = StandardScaler()
-        standardized_img = scaler.fit_transform(reshaped_img)
-
-        # Apply DBSCAN clustering
-        dbscan = DBSCAN(eps=self.eps.value(), min_samples=self.samples.value(), n_jobs=5)
-        dbscan_labels = dbscan.fit_predict(standardized_img)
-
-        # Generate random colors for each cluster
-        unique_labels = np.unique(dbscan_labels)
-        cluster_colors = [tuple(np.random.randint(0, 256, size=3)) for _ in range(len(unique_labels))]
-        # Assign random colors to each pixel based on cluster labels
-        segmented_img_dbscan = np.array([cluster_colors[label] for label in dbscan_labels])
-        segmented_img_dbscan = segmented_img_dbscan.reshape(self.img.shape)
-
-        return segmented_img_dbscan.astype(np.uint8)
-
-    def rgb_to_lab(self, rgb_img):
-        rgb_img = rgb_img.astype(np.uint8)
-        pil_img = Image.fromarray(rgb_img)
-        lab_img = pil_img.convert('LAB')
-        lab_img = np.array(lab_img)
-        return lab_img
 
     def set_image(self):
         self.image_view.clear()
         self.image_view.setImage(self.img)
-
-    def use_watershed(self):
-        img = copy.deepcopy(self.img_original).astype(np.uint8)
-        self.img = watershed(img)
-        self.set_image()
-    def penis(self):
-        self.img=self.img_original
-        self.img=Redactor.seed_grow(self.img)
-        print(self.img)
-        self.set_image()
-
-    def hui(self):
-        self.img=self.img_original
-        self.img=Redactor.region_growing(self.img)
-        print(self.img)
-        self.set_image()
-    @staticmethod
-    def seed_grow(img):
-        # Начальные семена могут быть определены, например, путем поиска пикселей, которые превышают некоторый порог
-        seeds = find_seeds(img)
-        # Создание маски для отслеживания пикселей, которые уже были обработаны
-        visited = np.zeros(img.shape[:2], dtype=bool)
-        for seed in seeds:
-            # Выполнение выращивания семян из каждой точки-семени
-            grow_from_seed(img, seed, visited)
-        return img
-
-    @staticmethod
-    def region_growing(img):
-        # Начальная область может быть, например, центральным пикселем
-        seed = (img.shape[0] // 2, img.shape[1] // 2)
-        # Создание маски для отслеживания пикселей, которые уже были обработаны
-        visited = np.zeros(img.shape[:2], dtype=bool)
-        # Определение начального цвета
-        target_color = img[seed]
-        # Выполнение разрастания области
-        grow_region(img, seed, visited, target_color)
-        return img
 
 
 if __name__ == "__main__":
