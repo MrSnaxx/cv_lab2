@@ -18,23 +18,23 @@ from PyQt5 import uic
 from sklearn.cluster import KMeans, DBSCAN
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+
 # from numba import njit
 Ui_MainWindow, _ = uic.loadUiType("interface_lab_2.ui")
-
-
 
 
 class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(Redactor, self).__init__()
+        self.video = r"C:\Users\user\Downloads\videoplayback.mp4"
         self.setupUi(self)
         self.img = None
         self.image_view.ui.histogram.hide()
         self.image_view.ui.roiBtn.hide()
         self.image_view.ui.menuBtn.hide()
-        self.penis_button.clicked.connect(lambda: self.farenbeck(r"C:\Users\user\Downloads\videoplayback.mp4"))
-        self.vagina_button.clicked.connect(lambda: self.horn_schunck(r"C:\Users\user\Downloads\videoplayback.mp4"))
-        self.zhopa_buton.clicked.connect(lambda: self.lucas_kanade(r"C:\Users\user\Downloads\videoplayback.mp4"))
+        self.penis_button.clicked.connect(lambda: self.farenbeck(self.video))
+        self.vagina_button.clicked.connect(lambda: self.horn_schunck(self.video))
+        self.zhopa_buton.clicked.connect(lambda: self.lucas_kanade(self.video))
 
         self.load_image_action.triggered.connect(self.load_image)
         self.save_image_action.triggered.connect(self.save_image)
@@ -144,7 +144,7 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         cap.release()
         cv.destroyAllWindows()
 
-    def lucas_kanade(self,video_path):
+    def lucas_kanade(self, video_path):
         cap = cv.VideoCapture(video_path)
 
         # Параметры для функции оптического потока Лукаса-Канаде
@@ -223,7 +223,6 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
             QMessageBox.about(self, "Ошибка", "Путь сохранения не выбран")
             return
         self.image_view.getImageItem().save(filename[0])
-
 
     def set_image(self):
         self.image_view.clear()
