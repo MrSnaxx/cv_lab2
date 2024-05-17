@@ -26,7 +26,7 @@ Ui_MainWindow, _ = uic.loadUiType("interface_lab_2.ui")
 class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(Redactor, self).__init__()
-        self.video = r"C:\Users\user\Downloads\videoplayback.mp4"
+        self.video = r"C:\Users\user\PycharmProjects\cv_lab2\КСД x mmmesss.mp4"
         self.setupUi(self)
         self.img = None
         self.image_view.ui.histogram.hide()
