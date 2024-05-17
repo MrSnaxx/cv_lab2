@@ -72,14 +72,21 @@
        <item>
         <widget class="QPushButton" name="penis_button">
          <property name="text">
-          <string>Абоба</string>
+          <string>Фаренбек</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="vagina_button">
          <property name="text">
-          <string>Биба</string>
+          <string>Порн-шарк</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="zhopa_buton">
+         <property name="text">
+          <string>Лукас Канада</string>
          </property>
         </widget>
        </item>
