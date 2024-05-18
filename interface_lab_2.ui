@@ -70,23 +70,23 @@
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <widget class="QPushButton" name="penis_button">
+        <widget class="QPushButton" name="horn_button">
          <property name="text">
-          <string>Фаренбек</string>
+          <string>Хорн-Шанк</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="vagina_button">
+        <widget class="QPushButton" name="farnbeck_button">
          <property name="text">
-          <string>Порн-шарк</string>
+          <string>Фарнбэк</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="zhopa_buton">
+        <widget class="QPushButton" name="lucas_button">
          <property name="text">
-          <string>Лукас Канада</string>
+          <string>Лукас-Канаде</string>
          </property>
         </widget>
        </item>
@@ -114,7 +114,7 @@
      <x>0</x>
      <y>0</y>
      <width>1400</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">

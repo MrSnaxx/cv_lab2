@@ -26,39 +26,34 @@ Ui_MainWindow, _ = uic.loadUiType("interface_lab_2.ui")
 class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(Redactor, self).__init__()
-        self.video = r"C:\Users\user\PycharmProjects\cv_lab2\КСД x mmmesss.mp4"
+        self.video = r"C:\Users\sthap\Downloads\videoplayback (1).mp4"
         self.setupUi(self)
         self.img = None
         self.image_view.ui.histogram.hide()
         self.image_view.ui.roiBtn.hide()
         self.image_view.ui.menuBtn.hide()
-        self.penis_button.clicked.connect(lambda: self.farenbeck(self.video))
-        self.vagina_button.clicked.connect(lambda: self.horn_schunck(self.video))
-        self.zhopa_buton.clicked.connect(lambda: self.lucas_kanade(self.video))
+        self.farnbeck_button.clicked.connect(lambda: self.farenbeck(self.video))
+        self.horn_button.clicked.connect(lambda: self.horn_schunck(self.video))
+        self.lucas_button.clicked.connect(lambda: self.lucas_kanade(self.video))
+        self.lucas_button.clicked.connect(lambda: self.lucas_kanade(self.video))
 
         self.load_image_action.triggered.connect(self.load_image)
         self.save_image_action.triggered.connect(self.save_image)
 
-    # Функция для обработки видео с использованием алгоритма Хорна-Шанка
     def farenbeck(self, video_path):
         cap = cv.VideoCapture(video_path)
-        # Инициализация параметров алгоритма Фарнебэка
         params = dict(pyr_scale=0.5, levels=3, winsize=15, iterations=3, poly_n=5, poly_sigma=1.2, flags=0)
-        # Инициализация предыдущего кадра
         ret, prev_frame = cap.read()
         if not ret:
             print("Ошибка чтения видео.")
             return
         prev_frame_gray = cv.cvtColor(prev_frame, cv.COLOR_BGR2GRAY)
-        # Чтение видео и применение алгоритма Фарнебэка к каждому кадру
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
             frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-            # Применение алгоритма Фарнебэка к двум последовательным кадрам
             flow = cv.calcOpticalFlowFarneback(prev_frame_gray, frame_gray, None, **params)
-            # Визуализация оптического потока
             hsv = np.zeros_like(prev_frame)
             hsv[..., 1] = 255
 
@@ -68,8 +63,7 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
 
             bgr = cv.cvtColor(hsv, cv.COLOR_HSV2BGR)
 
-            # Показать текущий кадр с обнаруженным оптическим потоком
-            cv.imshow('Optical Flow - Farneback', bgr)
+            cv.imshow('Optical Flow - Farneback', cv.resize(bgr,(1280,720)))
 
             prev_frame_gray = frame_gray
 
@@ -80,7 +74,7 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
         cv.destroyAllWindows()
 
     def horn_schunck(self, video_path):
-        def compute_horn_schunck(I1, I2, alpha=0.001, num_iterations=100):
+        def compute_horn_schunck(I1, I2, alpha=30, num_iterations=10):
             I1 = I1.astype(np.float32) / 255.0
             I2 = I2.astype(np.float32) / 255.0
 
@@ -134,7 +128,7 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
 
             bgr = cv.cvtColor(hsv, cv.COLOR_HSV2BGR)
 
-            cv.imshow('Optical Flow - Horn-Schunck', bgr)
+            cv.imshow('Optical Flow - Horn-Schunck', cv.resize(bgr,(1280,720)))
 
             prev_frame_gray = frame_gray
 
@@ -147,20 +141,17 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
     def lucas_kanade(self, video_path):
         cap = cv.VideoCapture(video_path)
 
-        # Параметры для функции оптического потока Лукаса-Канаде
-        lk_params = dict(winSize=(15, 15), maxLevel=2,
+        lk_params = dict(winSize=(10, 10), maxLevel=2,
                          criteria=(cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
 
-        # Считывание первого кадра и его преобразование в градации серого
         ret, old_frame = cap.read()
         if not ret:
             print("Ошибка чтения видео.")
             return
         old_gray = cv.cvtColor(old_frame, cv.COLOR_BGR2GRAY)
 
-        # Инициализация точек для отслеживания (например, углы по методу Ши-Томаси)
         p0 = cv.goodFeaturesToTrack(old_gray, mask=None,
-                                    **dict(maxCorners=200, qualityLevel=0.3, minDistance=5, blockSize=15))
+                                    **dict(maxCorners=100, qualityLevel=0.3, minDistance=10, blockSize=15))
 
         while True:
             ret, frame = cap.read()
@@ -168,29 +159,19 @@ class Redactor(QtWidgets.QMainWindow, Ui_MainWindow):
                 break
             frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
-            # Вычисление оптического потока по методу Лукаса-Канаде
             p1, st, err = cv.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
 
-            # Выбор хороших точек
             if p1 is not None and st is not None:
                 good_new = p1[st == 1]
                 good_old = p0[st == 1]
-
-                # Создание новой маски для каждого кадра, чтобы отображать линии только для двух ближайших кадров
                 mask = np.zeros_like(frame)
-
-                # Рисование треков
                 for i, (new, old) in enumerate(zip(good_new, good_old)):
                     a, b = new.ravel()
                     c, d = old.ravel()
                     mask = cv.line(mask, (int(a), int(b)), (int(c), int(d)), (0, 255, 0), 2)
                     frame = cv.circle(frame, (int(a), int(b)), 5, (0, 255, 0), -1)
-
                 img = cv.add(frame, mask)
-
-                cv.imshow('Optical Flow - Lucas-Kanade', img)
-
-                # Обновление предыдущего кадра и точек
+                cv.imshow('Optical Flow - Lucas-Kanade', cv.resize(img,(1280, 720)))
                 old_gray = frame_gray.copy()
                 p0 = good_new.reshape(-1, 1, 2)
 
